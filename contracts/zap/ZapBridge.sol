@@ -4,7 +4,6 @@ pragma solidity ^0.4.24;
 contract ZapBridge{
     //event
     event Transfer(address indexed from, address indexed to, uint256 value);
-
     function getContract(string contractName) public view returns (address); //coordinator
     function calcZapForDots(address, bytes32, uint256) external view returns (uint256); //bondage
     function delegateBond(address holderAddress, address oracleAddress, bytes32 endpoint, uint256 numDots) external returns (uint256 boundZap); //bondage

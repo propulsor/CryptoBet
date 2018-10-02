@@ -1,17 +1,19 @@
 pragma solidity ^0.4.24;
 
-import "./DatabaseInterface.sol";
-import "../../lib/ownership/Ownable.sol";
+import "./Idatabase.sol";
+import "../Ownable.sol";
 
-contract Database is Ownable, DatabaseInterface {
+contract Database is Ownable, Idatabase {
 	event StorageModified(address indexed contractAddress, bool allowed);
 
 	mapping (bytes32 => bytes32) data_bytes32;
 	mapping (bytes32 => bytes) data_bytes;
 	mapping (bytes32 => bytes32[]) data_bytesArray;
-	mapping (bytes32 => int[]) data_intArray;
+	mapping (bytes32 => int256[]) data_intArray;
 	mapping (bytes32 => address[]) data_addressArray;
 	mapping (address => bool) allowed;
+    mapping (bytes32 => address) data_address;
+
 
 	constructor() public {
 
@@ -63,6 +65,14 @@ contract Database is Ownable, DatabaseInterface {
 	function setString(bytes32 key, string value) external storageOnly {
 		data_bytes[key] = bytes(value);
 	}
+    /*** Address ***/
+    function setAddress(bytes32 key, address add) external storageOnly{
+        data_address[key] = add;
+    }
+
+    function getAddress(bytes32 key) external view returns (address){
+        return data_address[key];
+    }
 
 	/*** Bytes Array ***/
 	function getBytesArray(bytes32 key) external view returns (bytes32[]) {
@@ -90,11 +100,11 @@ contract Database is Ownable, DatabaseInterface {
 	}
 
 	/*** Int Array ***/
-	function getIntArray(bytes32 key) external view returns (int[]) {
+	function getIntArray(bytes32 key) external view returns (int256[]) {
 		return data_intArray[key];
 	}
 
-	function getIntArrayIndex(bytes32 key, uint256 index) external view returns (int) {
+	function getIntArrayIndex(bytes32 key, uint256 index) external view returns (int256) {
 		return data_intArray[key][index];
 	}
 
@@ -102,15 +112,15 @@ contract Database is Ownable, DatabaseInterface {
 		return data_intArray[key].length;
 	}
 
-	function pushIntArray(bytes32 key, int value) external {
+	function pushIntArray(bytes32 key, int256 value) external {
 		data_intArray[key].push(value);
 	}
 
-	function setIntArrayIndex(bytes32 key, uint256 index, int value) external storageOnly {
+	function setIntArrayIndex(bytes32 key, uint256 index, int256 value) external storageOnly {
 		data_intArray[key][index] = value;
 	}
 
-	function setIntArray(bytes32 key, int[] value) external storageOnly {
+	function setIntArray(bytes32 key, int256[] value) external storageOnly {
 		data_intArray[key] = value;
 	}
 

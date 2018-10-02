@@ -1,8 +1,8 @@
 pragma solidity ^0.4.24;
 
-import "../../lib/ownership/Ownable.sol";
+import "../Ownable.sol";
 
-contract DatabaseInterface is Ownable {
+contract Idatabase is Ownable {
 	function setStorageContract(address _storageContract, bool _allowed) public;
 	/*** Bytes32 ***/
 	function getBytes32(bytes32 key) external view returns(bytes32);
