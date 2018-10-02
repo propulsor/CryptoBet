@@ -1,5 +1,5 @@
 {
-  "name": "betContracts",
+  "name": "predictiongenerator",
   "version": "1.0.0",
   "description": "",
   "main": "truffle-config.js",
@@ -11,15 +11,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/propulsor/CryptoBet.git"
+    "url": "git+https://github.com/propulsor/PredictionContractGenerator.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/propulsor/CryptoBet/issues"
+    "url": "https://github.com/propulsor/PredictionContractGenerator/issues"
   },
-  "homepage": "https://github.com/propulsor/CryptoBet#readme",
+  "homepage": "https://github.com/propulsor/PredictionContractGenerator#readme",
   "dependencies": {
     "truffle-hdwallet-provider": "0.0.6"
   }
