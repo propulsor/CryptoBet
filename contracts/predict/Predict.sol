@@ -5,7 +5,7 @@ import "../SafeMath.sol";
 import "../zap/ZapBridge.sol";
 
 
-contract Predict is Ownable, ReentrancyGuard {
+contract Predict is  ReentrancyGuard {
     using SafeMath for uint256;
 
     address private bondage;
@@ -91,7 +91,7 @@ contract Predict is Ownable, ReentrancyGuard {
     /**
     - call back from provider, settle and distribute
     */
-    function callback(uint256 _id, int[] _response) external {
+    function callback(uint256 _id, int[] _response) external nonReentrant{
         require(msg.sender==oracle.provider, "result is not from correct oracle");
         require(_id == queryId,"not matching id queried");
         resultPrice = uint256(_response[0]);

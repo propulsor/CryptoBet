@@ -29,7 +29,7 @@ contract PredictFactory is ReentrancyGuard,Ownable{
         zapToken = ZapBridge(_zapCoor).getContract("ZAP_TOKEN");
     }
 
-    function createPredict(bytes32 _coin, uint256 _price, uint256 _time, uint256 _side) public payable{
+    function createPredict(bytes32 _coin, uint256 _price, uint256 _time, uint256 _side) external payable nonReentrant{
         address newPredict = new Predict(_coin,_price,_time,_side);
         byte32 id = keccack256(abi.encodePacked(msg.sender,newPredict,_coin,_price,_time));
         db.setAddress(keccak256(abi.encodePacked(id)),newPredict);
@@ -37,13 +37,13 @@ contract PredictFactory is ReentrancyGuard,Ownable{
         emit PredictCreated(id,_coin,_price,_time);
     }
 
-    function joinPrediction(address _predict, uint256 _side) public {
+    function joinPrediction(address _predict, uint256 _side) external nonReentrant {
         Predict(_predict).joinPrediction(_side);
         emit JoinPredict(msg.sender,_side,msg.value);
     }
 
     //Anyone can call settle and spend gas on executing this
-    function settlePrediction(address _predict) public{
+    function settlePrediction(address _predict) external nonReentrant{
         Predict(_predict).settlePrediction();
         emit SettlePredict()
     }
@@ -51,7 +51,7 @@ contract PredictFactory is ReentrancyGuard,Ownable{
     function getPredictInfo(address __predict) public view{
         return Predict(_predict).getInfo();
     }
-    function getPredictAddress(bytes32 id){
+    function getPredictAddress(bytes32 id) public view{
         return db.getAddress(id);
     }
 
