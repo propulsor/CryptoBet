@@ -3,7 +3,7 @@ import "../Ownable.sol";
 import "../ReentrancyGuard.sol";
 import "../SafeMath.sol";
 import "../zap/ZapBridge.sol";
-
+import "./IpredictFactory.sol";
 /**
 Simple Price prediction
 
@@ -38,20 +38,22 @@ contract PricePredict is  ReentrancyGuard {
     uint256 queryId;
     address settler;
     Oracle oracle;
+    IpredictFactory factory;
 
 
 
-    constructor(bytes32 _coin, uint256 _price, uint256 _time, uint256 _side, address _oracle, bytes32 _endpoint) internal payable{
+    constructor(address _creator,bytes32 _coin, uint256 _price, uint256 _time, uint256 _side, address _oracle, bytes32 _endpoint) internal payable{
         require(msg.value>0,"Need to send eth to bet to create");
         require(_side==Side.greater | _side == Side.equal | _side == Side.smaller,"invalid side");
         require(time>now,"time has to be in the future");
         coin=_coin;
         price = _price;
         time = _time;
-        creator = msg.sender;
+        creator = _creator;
         oracle = Oracle(_oracle,_endpoint);
-        sides[_side].push(msg.sender);
-        players[msg.sender] = msg.value;
+        sides[_side].push(creator);
+        players[creator] = msg.value;
+        factory = msg.sender;
     }
 
     function joinPrediction(uint256 _side) internal {
@@ -81,7 +83,7 @@ contract PricePredict is  ReentrancyGuard {
      - Contract needs to have 1 dot bonded through delegateBond to settle, if not - > revert
      - call oracle to get data to settle, whoever call to query provider will have rewards as part of settlement
     */
-    function settlePrediction(address _bondage, address _dispatch) internal {
+    function settlePrediction(address _bondage, address _dispatch) internal  returns (uint256){
         //this case is impossible to come across
         require(balance(this)>0,"no eth balance in this contract, cant settle");
         address[] pars = getParticipants();
@@ -97,6 +99,7 @@ contract PricePredict is  ReentrancyGuard {
         bytes32[] memory params = new bytes32[](1);
         params[0] = bytes32(time);
         queryId = ZapBridge(dispatchAddress).query(oracle.provider,coin,oracle.endpoint,params);
+        return queryId;
     }
 
     /**
@@ -109,14 +112,36 @@ contract PricePredict is  ReentrancyGuard {
         require(_id == queryId,"not matching id queried");
         require(_response.length > 0, "no response detected");
         resultPrice = uint256(_response[0]);
+        require(resultPrice>0,"price cant be 0");
         if(resultPrice>price){
-
+            distribute(Side.greater);
         }
         else if(resultPrice<price){
-
+            distribute(Side.smaller);
         }
         else{
-            //equal price
+            distribute(Side.equal);
+        }
+        PredictFactory(factory).emitSettle(address(this),resultPrice,totalAmountWinside,totalAmountLostside);
+
+    }
+
+    function distribute(Side _side) private nonReentrant{
+        address[] winners = sides[_side];
+        uint256 totalAmountWinside = 0
+        for(uint i=0; i<winners.length; i++){
+            totalAmountWinside += players[winners[i]];
+        }
+        uint256 totalAmountLostside = balance(address(this)) - totalAmountWinside
+        if(totalAmountLostside<=0){
+            //this should never happen
+        }else{
+            for(uint i=0; i<winners.length; i++){
+                address winner = winners[i];
+                uint256 winAmount = players[winner].add(players[winners].div(totalAmountWinside).mul(totalAmountLostside));
+                require(winner.send(winAmount),"fail to send to this winner, possible code attempted to execute");
+            }
+            require(balance(address(this))==0,"not fully distributed");
         }
     }
 }
