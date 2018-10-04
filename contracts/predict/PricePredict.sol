@@ -4,8 +4,11 @@ import "../ReentrancyGuard.sol";
 import "../SafeMath.sol";
 import "../zap/ZapBridge.sol";
 
+/**
+Simple Price prediction
 
-contract Predict is  ReentrancyGuard {
+*/
+contract PricePredict is  ReentrancyGuard {
     using SafeMath for uint256;
 
     address private bondage;
@@ -17,19 +20,14 @@ contract Predict is  ReentrancyGuard {
 
     enum Side {greater, smaller, equal}
 
-    struct Player{
-        address owner;
-        uint256 side;
-        uint256 amount;
-    }
-
     struct Oracle{
         address provider;
         bytes32 endpoint;
     }
 
 
-    mapping (address=>Player) players;
+    mapping (Side => address[]) sides;
+    mapping (address => uint256) players;
     address creator;
     bytes32 coin;
     uint256 price; //eth bet amount
@@ -38,6 +36,7 @@ contract Predict is  ReentrancyGuard {
     bool settle;
     uint256 resultPrice;
     uint256 queryId;
+    address settler;
     Oracle oracle;
 
 
@@ -50,20 +49,29 @@ contract Predict is  ReentrancyGuard {
         price = _price;
         time = _time;
         creator = msg.sender;
-        totalAmount = msg.value;
         oracle = Oracle(_oracle,_endpoint);
-        players[msg.sender] = Player(msg.sender,_side,msg.value);
+        sides[_side].push(msg.sender);
+        players[msg.sender] = msg.value;
     }
 
     function joinPrediction(uint256 _side) internal {
         require(msg.sender != creator,"maker cant take");
         require(msg.value>0,"Need to include eth to take the bet");
-        require(!players[mag.sender],"already anticipated");
-        players[msg.sender] = Player(msg.sender,_side,msg.value);
+        require(!players[msg.sender],"already anticipated");
+        players[msg.sender] = msg.value;
+        sides[_side].push(msg.sender)
     }
 
     function getInfo() public view {
-        return (coin,price,time,balance(this),players, oracle,settle);
+        return (coin,price,time,balance(this), oracle,settle);
+    }
+
+    function getParticipants() public view  returns memory (address[]){
+        address[] memory par;
+        par.push(sides[Side.smaller]);
+        par.push(sides[Side.greater]);
+        par.push(sides[Side.equal]);
+        return par;
     }
 
     //Anyone can call settle and spend gas on executing this
@@ -71,11 +79,14 @@ contract Predict is  ReentrancyGuard {
     Case1 : single player that created the prediction -> auto win
     Case2 : more than 1 players ->
      - Contract needs to have 1 dot bonded through delegateBond to settle, if not - > revert
-     - call oracle to get data to settle
+     - call oracle to get data to settle, whoever call to query provider will have rewards as part of settlement
     */
     function settlePrediction(address _bondage, address _dispatch) internal {
-        if(players.length==1){
-            players[0].transfer(balance(this));
+        //this case is impossible to come across
+        require(balance(this)>0,"no eth balance in this contract, cant settle");
+        address[] pars = getParticipants();
+        if(pars.length==1){
+            pars[0].transfer(balance(this));
             //kill contract?
             return;
         }
@@ -90,10 +101,13 @@ contract Predict is  ReentrancyGuard {
 
     /**
     - call back from provider, settle and distribute
+    - response is expected to be single number of price
+    - count player on each side and calculate distribution of winners
     */
     function callback(uint256 _id, int[] _response) external nonReentrant{
         require(msg.sender==oracle.provider, "result is not from correct oracle");
         require(_id == queryId,"not matching id queried");
+        require(_response.length > 0, "no response detected");
         resultPrice = uint256(_response[0]);
         if(resultPrice>price){
 
@@ -102,6 +116,7 @@ contract Predict is  ReentrancyGuard {
 
         }
         else{
+            //equal price
         }
     }
 }
