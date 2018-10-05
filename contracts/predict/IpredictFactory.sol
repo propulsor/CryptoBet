@@ -8,5 +8,5 @@ contract IpredictFactory {
     function getPredictAddress(bytes32)public view returns(address);
     function getPredictId(address) public view returns(bytes32);
     function getAllBets() public view returns(bytes32[]);
-    function emitSettled(bytes32. uint256, uint256,uint256) internal;
+    function emitSettled(bytes32, uint256, uint256,uint256) internal;
 }

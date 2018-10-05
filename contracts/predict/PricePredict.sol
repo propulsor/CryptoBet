@@ -18,7 +18,9 @@ contract PricePredict is  ReentrancyGuard {
     address public dataOracle;
     uint256 public minimumBetAmount;
 
-    enum Side {greater, smaller, equal}
+    int greater = 1;
+    int smaller = -1;
+    int equal=0;
 
     struct Oracle{
         address provider;
@@ -26,7 +28,7 @@ contract PricePredict is  ReentrancyGuard {
     }
 
 
-    mapping (Side => address[]) sides;
+    mapping (int => address[]) sides;
     mapping (address => uint256) players;
     address creator;
     bytes32 coin;
@@ -42,9 +44,9 @@ contract PricePredict is  ReentrancyGuard {
 
 
 
-    constructor(address _creator,bytes32 _coin, uint256 _price, uint256 _time, uint256 _side, address _oracle, bytes32 _endpoint) internal payable{
+    constructor(address _creator,bytes32 _coin, uint256 _price, uint256 _time, int _side, address _oracle, bytes32 _endpoint) internal payable{
         require(msg.value>0,"Need to send eth to bet to create");
-        require(_side==Side.greater | _side == Side.equal | _side == Side.smaller,"invalid side");
+       // require(_side==Side.greater || _side == Side.equal || _side == Side.smaller,"invalid side");
         require(time>now,"time has to be in the future");
         coin=_coin;
         price = _price;
@@ -53,26 +55,27 @@ contract PricePredict is  ReentrancyGuard {
         oracle = Oracle(_oracle,_endpoint);
         sides[_side].push(creator);
         players[creator] = msg.value;
-        factory = msg.sender;
+        factory = IpredictFactory(msg.sender);
     }
 
-    function joinPrediction(uint256 _side) internal {
+    function joinPrediction(int side) internal {
+        require(side==1 || side==0 || side==-1, "invalid side");
         require(msg.sender != creator,"maker cant take");
         require(msg.value>0,"Need to include eth to take the bet");
-        require(!players[msg.sender],"already anticipated");
+        require(players[msg.sender] != 0,"already anticipated");
         players[msg.sender] = msg.value;
-        sides[_side].push(msg.sender)
+        sides[side].push(msg.sender);
     }
 
-    function getInfo() public view {
-        return (coin,price,time,balance(this), oracle,settle);
+    function getInfo() public view returns (bytes32,uint256,uint256,uint256,address,bool) {
+        return (coin,price,time,address(this).balance, oracle.provider,settle);
     }
 
-    function getParticipants() public view  returns memory (address[]){
-        address[] memory par;
-        par.push(sides[Side.smaller]);
-        par.push(sides[Side.greater]);
-        par.push(sides[Side.equal]);
+    function getParticipants() public view  returns (address[]){
+        address[] par;
+        par.push(sides[-1]);
+        par.push(sides[1]);
+        par.push(sides[0]);
         return par;
     }
 
@@ -85,10 +88,10 @@ contract PricePredict is  ReentrancyGuard {
     */
     function settlePrediction(address _bondage, address _dispatch) internal  returns (uint256){
         //this case is impossible to come across
-        require(balance(this)>0,"no eth balance in this contract, cant settle");
-        address[] pars = getParticipants();
+        require(address(this).balance>0,"no eth balance in this contract, cant settle");
+        address[] memory pars = getParticipants();
         if(pars.length==1){
-            pars[0].transfer(balance(this));
+            pars[0].transfer(address(this).balance);
             //kill contract?
             return;
         }
@@ -98,7 +101,7 @@ contract PricePredict is  ReentrancyGuard {
         require(bonded>=1, "Need at least 1 dots bonded to settle");
         bytes32[] memory params = new bytes32[](1);
         params[0] = bytes32(time);
-        queryId = ZapBridge(dispatchAddress).query(oracle.provider,coin,oracle.endpoint,params);
+        queryId = ZapBridge(_dispatch).query(oracle.provider,coin,oracle.endpoint,params);
         return queryId;
     }
 
@@ -114,34 +117,33 @@ contract PricePredict is  ReentrancyGuard {
         resultPrice = uint256(_response[0]);
         require(resultPrice>0,"price cant be 0");
         if(resultPrice>price){
-            distribute(Side.greater);
+            distribute(greater);
         }
         else if(resultPrice<price){
-            distribute(Side.smaller);
+            distribute(smaller);
         }
         else{
-            distribute(Side.equal);
+            distribute(equal);
         }
-        PredictFactory(factory).emitSettle(address(this),resultPrice,totalAmountWinside,totalAmountLostside);
-
     }
 
-    function distribute(Side _side) private nonReentrant{
-        address[] winners = sides[_side];
-        uint256 totalAmountWinside = 0
+    function distribute(int _side) private nonReentrant{
+        address[] memory winners = sides[_side];
+        uint256 totalAmountWinside = 0;
         for(uint i=0; i<winners.length; i++){
             totalAmountWinside += players[winners[i]];
         }
-        uint256 totalAmountLostside = balance(address(this)) - totalAmountWinside
+        uint256 totalAmountLostside = address(this).balance - totalAmountWinside;
         if(totalAmountLostside<=0){
             //this should never happen
         }else{
-            for(uint i=0; i<winners.length; i++){
-                address winner = winners[i];
+            for(uint j=0; j<winners.length; j++){
+                address winner = winners[j];
                 uint256 winAmount = players[winner].add(players[winners].div(totalAmountWinside).mul(totalAmountLostside));
                 require(winner.send(winAmount),"fail to send to this winner, possible code attempted to execute");
             }
-            require(balance(address(this))==0,"not fully distributed");
+            require(address(this).balance==0,"not fully distributed");
         }
+        factory.emitSettle(address(this),resultPrice,totalAmountWinside,totalAmountLostside);
     }
 }

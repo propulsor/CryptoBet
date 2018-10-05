@@ -4,6 +4,7 @@ import "../Ownable.sol";
 import "../SafeMath.sol";
 import "../ReentrancyGuard.sol";
 import "../zap/ZapBridge.sol";
+import "./PricePredict.sol";
 import "./Ipredict.sol";
 
 /** Price betting contract*/
@@ -14,10 +15,13 @@ contract PredictFactory is ReentrancyGuard,Ownable{
     //Database
     Idatabase public db;
     Ipredict Predict;
+    ZapBridge zapToken;
+    ZapBridge bondage;
+    ZapBridge dispatch;
 
     //events
     event JoinPredict(address indexed player, uint256 indexed side, uint256 indexed amount, bool indexed join);
-    event SettlingPrediction(byte32 indexed id, uint256 indexed queryId);
+    event SettlingPrediction(bytes32 indexed id, uint256 indexed queryId);
     event PredictCreated(bytes32 indexed id, bytes32 indexed coin, uint256 indexed price, uint256 indexed time);
     event Settled(bytes32 indexed id, uint256 indexed resultPrice, uint256 winAmount, uint256 lostAmount);
 
@@ -32,8 +36,8 @@ contract PredictFactory is ReentrancyGuard,Ownable{
     }
 
     function createPredict(bytes32 _coin, uint256 _price, uint256 _time, uint256 _side) external payable nonReentrant{
-        address newPredict = new Predict(_coin,_price,_time,_side);
-        byte32 id = keccack256(abi.encodePacked(msg.sender,newPredict,_coin,_price,_time));
+        address newPredict = new PricePredict(_coin,_price,_time,_side);
+        bytes32 id = keccak256(abi.encodePacked(msg.sender,newPredict,_coin,_price,_time));
         Predict(newPredict).setId(id);
         db.setAddress(keccak256(abi.encodePacked(id)),newPredict);
         db.pushBytesArray(keccak256(abi.encodePacked("AllPredicts")),id);
@@ -56,7 +60,7 @@ contract PredictFactory is ReentrancyGuard,Ownable{
         emit SettlingPrediction(_predict,queryId);
     }
 
-    function getPredictInfo(address __predict) public view{
+    function getPredictInfo(address _predict) public view{
         return Predict(_predict).getInfo();
     }
 

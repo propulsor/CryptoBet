@@ -21,6 +21,8 @@
   },
   "homepage": "https://github.com/propulsor/PredictionContractGenerator#readme",
   "dependencies": {
+    "chai": "^4.2.0",
+    "chai-as-promised": "^7.1.1",
     "truffle-hdwallet-provider": "0.0.6"
   }
 }
