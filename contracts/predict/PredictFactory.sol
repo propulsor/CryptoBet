@@ -15,24 +15,24 @@ contract PredictFactory is ReentrancyGuard,Ownable{
     //Database
     Idatabase public db;
     Ipredict Predict;
-    ZapBridge zapToken;
-    ZapBridge bondage;
-    ZapBridge dispatch;
+    address zapToken;
+    address bondage;
+    address dispatch;
 
     //events
-    event JoinPredict(address indexed player, uint256 indexed side, uint256 indexed amount);
-    event SettlingPrediction(bytes32 indexed id, uint256 indexed queryId);
-    event PredictCreated(bytes32 indexed id, bytes32 indexed coin, uint256 indexed price, uint256 time);
+    event JoinPredict(address indexed player, int256 indexed side, uint256 indexed amount);
+    event SettlingPrediction(address indexed predict, uint256 indexed queryId);
+    event PredictCreated(bytes32 indexed id, string indexed coin, uint256 indexed price, uint256 time);
     event Settled(bytes32 indexed id, uint256 indexed resultPrice, uint256 winAmount, uint256 lostAmount);
 
-    constructor(address _dbAddress, address _zapCoor){
+    constructor(address _dbAddress, address _zapCoor) public{
         require(_dbAddress != address(0),"db address is required");
         require(_zapCoor != address(0), "Zap Coordinator address is required");
         db = Idatabase(_dbAddress);
         db.setStorageContract(address(this),true);
-        bondage = ZapBridge(ZapBridge(_zapCoor).getContract("BONDAGE"));
-        dispatch = ZapBridge(ZapBridge(_zapCoor).getContract("DISPATCH"));
-        zapToken = ZapBridge(ZapBridge(_zapCoor).getContract("ZAP_TOKEN"));
+        bondage = ZapBridge(_zapCoor).getContract("BONDAGE");
+        dispatch = ZapBridge(_zapCoor).getContract("DISPATCH");
+        zapToken = ZapBridge(_zapCoor).getContract("ZAP_TOKEN");
     }
 
     function createPredict(string _coin, uint256 _price, uint256 _time, int256 _side, address _oracle, bytes32 _endpoint) external payable nonReentrant{
@@ -44,8 +44,8 @@ contract PredictFactory is ReentrancyGuard,Ownable{
         emit PredictCreated(id,_coin,_price,_time);
     }
 
-    function joinPrediction(address _predict, uint256 _side) external nonReentrant {
-        bool join = Predict(_predict).joinPrediction(_side);
+    function joinPrediction(address _predict, int _side) external payable nonReentrant {
+        PricePredict(_predict).joinPrediction(_side);
         emit JoinPredict(msg.sender,_side,msg.value);
     }
 
@@ -56,20 +56,20 @@ contract PredictFactory is ReentrancyGuard,Ownable{
    that's when the
     */
     function settlePrediction(address _predict) external nonReentrant{
-        uint256 queryId = Predict(_predict).settlePrediction();
+        uint256 queryId = PricePredict(_predict).settlePrediction(bondage,dispatch);
         emit SettlingPrediction(_predict,queryId);
     }
 
-    function getPredictInfo(address _predict) public view{
-        return Predict(_predict).getInfo();
+    function getPredictInfo(address _predict) public view returns(string, uint, uint, uint, address, bool){
+        return PricePredict(_predict).getInfo();
     }
 
     function getPredictAddress(bytes32 id) public view returns(address){
         return db.getAddress(id);
     }
 
-    function getPredictId(address _predict) public view returns(uint256){
-        return Predict(_predict).getId();
+    function getPredictId(address _predict) public view returns(bytes32){
+        return PricePredict(_predict).getId();
     }
 
     function getAllBets() public view returns (bytes32[]){

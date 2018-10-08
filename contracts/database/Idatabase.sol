@@ -16,6 +16,9 @@ contract Idatabase is Ownable {
 	/*** String ***/
 	function getString(bytes32 key) external view returns(string);
 	function setString(bytes32 key, string value) external;
+	/*** Address ***/
+	function setAddress(bytes32 _key, address _address) external;
+	function getAddress(bytes32 key) external view returns (address);
 	/*** Bytes Array ***/
 	function getBytesArray(bytes32 key) external view returns (bytes32[]);
 	function getBytesArrayIndex(bytes32 key, uint256 index) external view returns (bytes32);

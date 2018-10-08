@@ -49,7 +49,7 @@ contract PricePredict is  ReentrancyGuard {
 
 
 
-    constructor(address _creator,string _coin, uint256 _price, uint256 _time, int _side, address _oracle, bytes32 _endpoint) payable{
+    constructor(address _creator,string _coin, uint256 _price, uint256 _time, int _side, address _oracle, bytes32 _endpoint) public payable{
         require(msg.value>0,"Need to send eth to bet to create");
        // require(_side==Side.greater || _side == Side.equal || _side == Side.smaller,"invalid side");
         require(time>now,"time has to be in the future");
@@ -63,7 +63,7 @@ contract PricePredict is  ReentrancyGuard {
         factory = IpredictFactory(msg.sender);
     }
 
-    function joinPrediction(int side) internal {
+    function joinPrediction(int side) external payable {
         require(side==1 || side==0 || side==-1, "invalid side");
         require(msg.sender != creator,"maker cant take");
         require(msg.value>0,"Need to include eth to take the bet");
@@ -76,6 +76,14 @@ contract PricePredict is  ReentrancyGuard {
         return (coin,price,time,address(this).balance, oracle.provider,settle);
     }
 
+    function getId() public view returns (bytes32){
+        return id;
+    }
+
+    function setId(bytes32 _id) public {
+        id = _id;
+    }
+
     function getParticipants() public view  returns (address[], address[], address[]){
         return (sides[-1],sides[0],sides[1]);
     }
@@ -86,9 +94,6 @@ contract PricePredict is  ReentrancyGuard {
         return size;
     }
 
-    function setId(bytes32 _id) public {
-        id = _id;
-    }
 
 
     function refund(int256 side) private validSide(side) {
@@ -108,7 +113,7 @@ contract PricePredict is  ReentrancyGuard {
      - Contract needs to have 1 dot bonded through delegateBond to settle, if not - > revert
      - call oracle to get data to settle, whoever call to query provider will have rewards as part of settlement
     */
-    function settlePrediction(address _bondage, address _dispatch) internal  returns (uint256){
+    function settlePrediction(address _bondage, address _dispatch) external  returns (uint256){
         //this case is impossible to come across
         require(address(this).balance>0,"no eth balance in this contract, cant settle");
         require(!settle,"already settled");

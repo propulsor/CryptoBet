@@ -6,7 +6,7 @@ contract ZapBridge{
     event Transfer(address indexed from, address indexed to, uint256 value);
     function getContract(string contractName) public view returns (address); //coordinator
     function calcZapForDots(address, bytes32, uint256) external view returns (uint256); //bondage
-    function getBoundDots(address, address, bytes32) returns(uint256);
+    function getBoundDots(address, address, bytes32) public returns(uint256);
     function delegateBond(address holderAddress, address oracleAddress, bytes32 endpoint, uint256 numDots) external returns (uint256 boundZap); //bondage
     function query(address, string, bytes32, bytes32[]) external returns (uint256); //dispatch
     function respondIntArray(uint256, string) external returns (bool); //dispatch
