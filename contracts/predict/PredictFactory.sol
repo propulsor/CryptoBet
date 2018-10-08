@@ -20,25 +20,25 @@ contract PredictFactory is ReentrancyGuard,Ownable{
     ZapBridge dispatch;
 
     //events
-    event JoinPredict(address indexed player, uint256 indexed side, uint256 indexed amount, bool indexed join);
+    event JoinPredict(address indexed player, uint256 indexed side, uint256 indexed amount);
     event SettlingPrediction(bytes32 indexed id, uint256 indexed queryId);
-    event PredictCreated(bytes32 indexed id, bytes32 indexed coin, uint256 indexed price, uint256 indexed time);
+    event PredictCreated(bytes32 indexed id, bytes32 indexed coin, uint256 indexed price, uint256 time);
     event Settled(bytes32 indexed id, uint256 indexed resultPrice, uint256 winAmount, uint256 lostAmount);
 
     constructor(address _dbAddress, address _zapCoor){
         require(_dbAddress != address(0),"db address is required");
-        assert(_zapCoor != address(0), "Zap Coordinator address is required");
+        require(_zapCoor != address(0), "Zap Coordinator address is required");
         db = Idatabase(_dbAddress);
-        db.setStorageContract(address(this));
-        bondage = ZapBridge(_zapCoor).getContract("BONDAGE");
-        dispatch = ZapBridge(_zapCoor).getContract("DISPATCH");
-        zapToken = ZapBridge(_zapCoor).getContract("ZAP_TOKEN");
+        db.setStorageContract(address(this),true);
+        bondage = ZapBridge(ZapBridge(_zapCoor).getContract("BONDAGE"));
+        dispatch = ZapBridge(ZapBridge(_zapCoor).getContract("DISPATCH"));
+        zapToken = ZapBridge(ZapBridge(_zapCoor).getContract("ZAP_TOKEN"));
     }
 
-    function createPredict(bytes32 _coin, uint256 _price, uint256 _time, uint256 _side) external payable nonReentrant{
-        address newPredict = new PricePredict(_coin,_price,_time,_side);
+    function createPredict(string _coin, uint256 _price, uint256 _time, int256 _side, address _oracle, bytes32 _endpoint) external payable nonReentrant{
+        PricePredict newPredict = new PricePredict(msg.sender,_coin,_price,_time,_side, _oracle, _endpoint);
         bytes32 id = keccak256(abi.encodePacked(msg.sender,newPredict,_coin,_price,_time));
-        Predict(newPredict).setId(id);
+        newPredict.setId(id);
         db.setAddress(keccak256(abi.encodePacked(id)),newPredict);
         db.pushBytesArray(keccak256(abi.encodePacked("AllPredicts")),id);
         emit PredictCreated(id,_coin,_price,_time);
@@ -46,7 +46,7 @@ contract PredictFactory is ReentrancyGuard,Ownable{
 
     function joinPrediction(address _predict, uint256 _side) external nonReentrant {
         bool join = Predict(_predict).joinPrediction(_side);
-        emit JoinPredict(msg.sender,_side,msg.value, join);
+        emit JoinPredict(msg.sender,_side,msg.value);
     }
 
     /**
@@ -76,7 +76,7 @@ contract PredictFactory is ReentrancyGuard,Ownable{
         return db.getBytesArray(keccak256(abi.encodePacked("AllPredicts")));
     }
 
-    function emitSettled(bytes32 _id, uint256 _price, uint256 _winAmount, uint256 _lostAmount) internal {
+    function emitSettled(bytes32 _id, uint256 _price, uint256 _winAmount, uint256 _lostAmount) external {
         emit Settled(_id,_price, _winAmount, _lostAmount);
     }
 
