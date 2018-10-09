@@ -6,13 +6,16 @@ const expect = require('chai')
   .expect;
 
 const PredictFactory = artifacts.require("PredictFactory");
-const Db = artifacts.require("Database")
+const Db = artifacts.require("Db");
 const Predict = artifacts.require("PricePredict");
-const ZapDB = artifacts.require("./node_modules/zap_contracts/contracts/database/Database.sol")
-const ZapCoor = artifacts.require("./node_modules/zap_contracts/contracts/lib/ownership/ZapCoordinator.sol")
-const Bondage = artifacts.require("./node_modules/zap_contracts/contracts/platform/bondage/Bondage.sol")
-const Dispatch = artifacts.require("./node_modules/zap_contracts/contracts/platform/dispatch/Dispatch.sol")
-const ZapToken = artifacts.require("./node_modules/zap_contracts/contracts/platform/token/ZapToken.sol")
+const ZapDB = artifacts.require("Database");
+const ZapCoor = artifacts.require("ZapCoordinator");
+console.log("zap coor", ZapCoor)
+const Bondage = artifacts.require("Bondage");
+const Dispatch = artifacts.require("Dispatch");
+const ZapToken = artifacts.require("ZapToken");
+const Registry = artifacts.require("Registry");
+const Cost = artifacts.require("CurrentCost")
 
 /// Oracle const
 const pubkey = "123";

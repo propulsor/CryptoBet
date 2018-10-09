@@ -3,7 +3,7 @@ pragma solidity ^0.4.24;
 import "./Idatabase.sol";
 import "../Ownable.sol";
 
-contract Database is Ownable, Idatabase {
+contract Db is Ownable, Idatabase {
 	event StorageModified(address indexed contractAddress, bool allowed);
 
 	mapping (bytes32 => bytes32) data_bytes32;
