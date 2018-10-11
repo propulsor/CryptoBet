@@ -112,7 +112,7 @@ contract Db is Ownable, Idatabase {
 		return data_intArray[key].length;
 	}
 
-	function pushIntArray(bytes32 key, int256 value) external {
+	function pushIntArray(bytes32 key, int256 value) external storageOnly{
 		data_intArray[key].push(value);
 	}
 

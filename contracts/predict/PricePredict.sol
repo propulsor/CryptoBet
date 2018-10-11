@@ -49,10 +49,10 @@ contract PricePredict is  ReentrancyGuard {
 
 
 
-    constructor(address _creator,string _coin, uint256 _price, uint256 _time, int _side, address _oracle, bytes32 _endpoint) public payable{
+    constructor(address _creator,string _coin, uint256 _price, uint256 _time, int _side, address _oracle, bytes32 _endpoint) public payable {
         require(msg.value>0,"Need to send eth to bet to create");
-       // require(_side==Side.greater || _side == Side.equal || _side == Side.smaller,"invalid side");
-        require(time>now,"time has to be in the future");
+        require(_side==1 || _side == 0 || _side == -1,"invalid side");
+        require(_time>0,"time has to be in the future");
         coin=_coin;
         price = _price;
         time = _time;
@@ -126,13 +126,13 @@ contract PricePredict is  ReentrancyGuard {
             return 0;
         }
         else{
-            (address[] memory greatorSide, address[] memory equalSide, address[] memory smallerSide) = getParticipants();
+            (address[] memory greaterSide, address[] memory equalSide, address[] memory smallerSide) = getParticipants();
             int singleSide;
             if(pars==smallerSide.length)
                 singleSide = -1 ;
             else if(pars==equalSide.length)
                 singleSide = 0;
-            else if(pars==greatorSide.length)
+            else if(pars==greaterSide.length)
                 singleSide = 1;
             else
                 singleSide= 2;

@@ -21,16 +21,18 @@ const Cost = artifacts.require("CurrentCost")
 const pubkey = "123";
 const title = "priceOracle"
 const endpoint = "price"
-const coin = "BTC"
 const curve = [1,1,1000000000000]
-
+///Predict
+const coin = "BTC"
+const price = 7000
+const time = Date.now()
 
 contract("PredicFactory",async (accounts)=>{
   const owner = accounts[0];
   const oracleowner = accounts[1]
   beforeEach(async function deployContract(){
     /***Deploy zap contrracts ***/
-    this.currentTest.zapdb = await ZapDB.new()
+    this.currentTest.zapdb = await ZapDB.new();
     this.currentTest.zapcoor = await ZapCoor.new();
     await this.currentTest.zapdb.transferOwnership(this.currentTest.zapcoor.address);
     await this.currentTest.zapcoor.addImmutableContract('DATABASE', this.currentTest.zapdb.address);
@@ -50,18 +52,40 @@ contract("PredicFactory",async (accounts)=>{
     this.currentTest.dispatch = await Dispatch.new(this.currentTest.zapcoor.address);
     await this.currentTest.zapcoor.updateContract('DISPATCH', this.currentTest.dispatch.address);
 
-    await this.currentTest.zapcoor.updateAllDependencies();
+     await this.currentTest.zapcoor.updateAllDependencies();
 
     /*** Deploy Predict related contracts ***/
     this.currentTest.db = await Db.new();
     this.currentTest.factory = await PredictFactory.new(this.currentTest.db.address,this.currentTest.zapcoor.address);
+    this.currentTest.db.setStorageContract(this.currentTest.factory.address,true)
 
     /*** Create Zap Oracle ***/
-    await this.currentTest.registry.initiateProvider(publicKey, title, { from: oracleowner });
-    await this.currentTest.registry.initiateProviderCurve(endpoint, curve, 0, { from: oracleOwner });
+    await this.currentTest.registry.initiateProvider(pubkey, title, { from: oracleowner });
+    await this.currentTest.registry.initiateProviderCurve(endpoint, curve, 0, { from: oracleowner });
 
   })
   it("1. Create new Predict Contract", async function(){
+    console.log("balance " , web3.eth.getBalance(accounts[1]).toString())
+      const predict = await this.test.factory.createPredict(coin,price,time,1,oracleowner,endpoint,{from:accounts[1],value:10})
+    console.log(predict)
+      expect(predict).to.be.ok
+  })
+  it("2. Join Prediction",async function(){
+
+  })
+  it("3. Set up broker", async function(){
+
+  })
+  it("4. Getters", async function(){
+
+  })
+  it("5. Settle Prediction", async function(){
+
+  })
+  it("6. Oracle Response query ", async function(){
+
+  })
+  it("7. Prediction should be settled", async function(){
 
   })
 })

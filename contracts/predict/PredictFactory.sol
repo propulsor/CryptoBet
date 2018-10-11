@@ -22,30 +22,30 @@ contract PredictFactory is ReentrancyGuard,Ownable{
     //events
     event JoinPredict(address indexed player, int256 indexed side, uint256 indexed amount);
     event SettlingPrediction(address indexed predict, uint256 indexed queryId);
-    event PredictCreated(bytes32 indexed id, string indexed coin, uint256 indexed price, uint256 time);
+    event PredictCreated(bytes32 indexed id, uint256 indexed price, uint256 indexed ti, string coin);
     event Settled(bytes32 indexed id, uint256 indexed resultPrice, uint256 winAmount, uint256 lostAmount);
 
     constructor(address _dbAddress, address _zapCoor) public{
         require(_dbAddress != address(0),"db address is required");
         require(_zapCoor != address(0), "Zap Coordinator address is required");
         db = Idatabase(_dbAddress);
-        db.setStorageContract(address(this),true);
         bondage = ZapBridge(_zapCoor).getContract("BONDAGE");
         dispatch = ZapBridge(_zapCoor).getContract("DISPATCH");
         zapToken = ZapBridge(_zapCoor).getContract("ZAP_TOKEN");
     }
 
-    function createPredict(string _coin, uint256 _price, uint256 _time, int256 _side, address _oracle, bytes32 _endpoint) external payable nonReentrant{
-        PricePredict newPredict = new PricePredict(msg.sender,_coin,_price,_time,_side, _oracle, _endpoint);
+    function createPredict(string memory _coin, uint256 _price, uint256 _time, int256 _side, address _oracle, bytes32 _endpoint)  payable nonReentrant returns(address){
+        address newPredict = (new PricePredict).value(msg.value)(msg.sender,_coin,_price,_time,_side, _oracle, _endpoint);
         bytes32 id = keccak256(abi.encodePacked(msg.sender,newPredict,_coin,_price,_time));
-        newPredict.setId(id);
-        db.setAddress(keccak256(abi.encodePacked(id)),newPredict);
+        PricePredict(newPredict).setId(id);
+        db.setAddress(id,newPredict);
         db.pushBytesArray(keccak256(abi.encodePacked("AllPredicts")),id);
-        emit PredictCreated(id,_coin,_price,_time);
+        emit PredictCreated(bytes32(1),_price,_time,_coin);
+        return newPredict;
     }
 
     function joinPrediction(address _predict, int _side) external payable nonReentrant {
-        PricePredict(_predict).joinPrediction(_side);
+        PricePredict(_predict).joinPrediction.value(msg.value)(_side);
         emit JoinPredict(msg.sender,_side,msg.value);
     }
 
