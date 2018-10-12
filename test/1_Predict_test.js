@@ -26,10 +26,13 @@ const curve = [1,1,1000000000000]
 const coin = "BTC"
 const price = 7000
 const time = Date.now()
+const REVERT = "revert"
 
 contract("PredicFactory",async (accounts)=>{
   const owner = accounts[0];
   const oracleowner = accounts[1]
+  let predict;
+  let broker = accounts[8]
   beforeEach(async function deployContract(){
     /***Deploy zap contrracts ***/
     this.currentTest.zapdb = await ZapDB.new();
@@ -64,28 +67,48 @@ contract("PredicFactory",async (accounts)=>{
     await this.currentTest.registry.initiateProviderCurve(endpoint, curve, 0, { from: oracleowner });
 
   })
-  it("1. Create new Predict Contract", async function(){
-    console.log("balance " , web3.eth.getBalance(accounts[1]).toString())
-      const predict = await this.test.factory.createPredict(coin,price,time,1,oracleowner,endpoint,{from:accounts[1],value:10})
-    console.log(predict)
-      expect(predict).to.be.ok
+  it.only("1. Create new Predict Contract", async function(){
+      let created = await this.test.factory.createPredict(coin,price,time,1,oracleowner,endpoint,{from:accounts[1],value:10})
+      expect(created).to.be.ok
+      predict = created.logs[0].args.newPredict
+    expect(predict).to.be.ok
+    console.log("predict", predict)
+    let createdPredict = await this.test.factory.getPredictInfo(predict)
+    console.log("PREDICT JUST CREATED ",createdPredict)
+    let oracleInfo = await this.test.factory.getOracle(predict);
+      console.log("ORACLE info : ", oracleInfo)
   })
-  it("2. Join Prediction",async function(){
+  it("2. Join Prediction on greater side",async function(){
+    await this.test.factory.joinPrediction(predict, 1,{from:accounts[3],value:10});
+    await this.test.factory.joinPrediction(predict,0,{from:accounts[4],value:20});
+    await this.test.factory.joinPrediction(predict,-1,{from:accounts[5],value:30});
+    let players = await this.test.factory.getParticipants(predict);
+    console.log("Players ", players)
 
   })
-  it("3. Set up broker", async function(){
+  it("3. Validate info", async function(){
 
   })
-  it("4. Getters", async function(){
+  it("4. Same player should not be able to join twice", async function(){
+    await expect(this.test.factory.joinPrediction(predict,1,{from:accounts[4],value:10})).to
+      .eventually.be.rejectedWith(REVERT)
+    await expect(this.test.factory.joinPrediction(predict,-1,{from:accounts[4],value:10})).to
+      .eventually.be.rejectedWith(REVERT)
+  })
+  it("5. Setup condition for settling prediction",async function(){
+    //get zap token
+    await this.test.token.allocate(broker,10000000,{from:owner})
+    let balance = await this.test.token.balanceOf(broker)
+    expect(balance.toNumber()).to.be.equal(10000000)
+    await this.test.token.approve(this.test.bondage.address,1000,{from:broker})
+  })
+  it("6. Settle Prediction", async function(){
+    let queryId = await this.test.factory.settlePrediction(predict,{from:broker})
+  })
+  it("7. Oracle Response query ", async function(){
 
   })
-  it("5. Settle Prediction", async function(){
-
-  })
-  it("6. Oracle Response query ", async function(){
-
-  })
-  it("7. Prediction should be settled", async function(){
+  it("8. Prediction should be settled", async function(){
 
   })
 })

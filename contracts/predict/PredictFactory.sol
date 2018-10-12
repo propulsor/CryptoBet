@@ -1,4 +1,4 @@
-pragma solidity ^0.4.0;
+pragma solidity ^0.4.24;
 import "../database/Idatabase.sol";
 import "../Ownable.sol";
 import "../SafeMath.sol";
@@ -22,7 +22,7 @@ contract PredictFactory is ReentrancyGuard,Ownable{
     //events
     event JoinPredict(address indexed player, int256 indexed side, uint256 indexed amount);
     event SettlingPrediction(address indexed predict, uint256 indexed queryId);
-    event PredictCreated(bytes32 indexed id, uint256 indexed price, uint256 indexed ti, string coin);
+    event PredictCreated(bytes32 indexed id, uint256 indexed price, uint256 indexed ti, string coin,address newPredict);
     event Settled(bytes32 indexed id, uint256 indexed resultPrice, uint256 winAmount, uint256 lostAmount);
 
     constructor(address _dbAddress, address _zapCoor) public{
@@ -40,13 +40,13 @@ contract PredictFactory is ReentrancyGuard,Ownable{
         PricePredict(newPredict).setId(id);
         db.setAddress(id,newPredict);
         db.pushBytesArray(keccak256(abi.encodePacked("AllPredicts")),id);
-        emit PredictCreated(bytes32(1),_price,_time,_coin);
+        emit PredictCreated(id,_price,_time,_coin,newPredict);
         return newPredict;
     }
 
     function joinPrediction(address _predict, int _side) external payable nonReentrant {
-        PricePredict(_predict).joinPrediction.value(msg.value)(_side);
-        emit JoinPredict(msg.sender,_side,msg.value);
+        (Ipredict(_predict).joinPrediction).value(msg.value)(msg.sender,_side);
+        emit JoinPredict(_predict,_side,msg.value);
     }
 
     /**
@@ -55,13 +55,22 @@ contract PredictFactory is ReentrancyGuard,Ownable{
    Depends on the settle time, condition, the query will be called and when oracle call callback methods on the prediction methods
    that's when the
     */
-    function settlePrediction(address _predict) external nonReentrant{
+    function settlePrediction(address _predict) external nonReentrant returns(uint256){
+        require(Ipredict(_predict).canSettle(),"this predict cant be settled at the moment");
+        (address provider,bytes32 endpoint) = Ipredict(_predict).getOracle();
+        uint bonded = ZapBridge(bondage).delegateBond(msg.sender,provider,endpoint,1);
+        require(bonded>=1, "Need at least 1 dots bonded to settle");
         uint256 queryId = PricePredict(_predict).settlePrediction(bondage,dispatch);
         emit SettlingPrediction(_predict,queryId);
+        return queryId;
     }
 
     function getPredictInfo(address _predict) public view returns(string, uint, uint, uint, address, bool){
-        return PricePredict(_predict).getInfo();
+        return Ipredict(_predict).getInfo();
+    }
+
+    function getOracle(address _predict) public view returns (address,bytes32){
+        return Ipredict(_predict).getOracle();
     }
 
     function getPredictAddress(bytes32 id) public view returns(address){
@@ -69,11 +78,16 @@ contract PredictFactory is ReentrancyGuard,Ownable{
     }
 
     function getPredictId(address _predict) public view returns(bytes32){
-        return PricePredict(_predict).getId();
+        bytes32 id =  Ipredict(_predict).getId();
+        return id;
     }
 
     function getAllBets() public view returns (bytes32[]){
         return db.getBytesArray(keccak256(abi.encodePacked("AllPredicts")));
+    }
+
+    function getParticipants(address _predict) public view returns (address[],address[],address[]){
+        return Ipredict(_predict).getParticipants();
     }
 
     function emitSettled(bytes32 _id, uint256 _price, uint256 _winAmount, uint256 _lostAmount) external {

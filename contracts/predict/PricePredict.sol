@@ -1,4 +1,4 @@
-pragma solidity ^0.4.0;
+pragma solidity ^0.4.24;
 import "../Ownable.sol";
 import "../ReentrancyGuard.sol";
 import "../SafeMath.sol";
@@ -44,8 +44,10 @@ contract PricePredict is  ReentrancyGuard {
     uint256 resultPrice;
     uint256 queryId;
     address settler;
+    address factory;
     Oracle oracle;
-    IpredictFactory factory;
+    IpredictFactory Factory;
+
 
 
 
@@ -60,19 +62,19 @@ contract PricePredict is  ReentrancyGuard {
         oracle = Oracle(_oracle,_endpoint);
         sides[_side].push(creator);
         players[creator] = msg.value;
-        factory = IpredictFactory(msg.sender);
+        Factory = IpredictFactory(msg.sender);
     }
 
-    function joinPrediction(int side) external payable {
+    function joinPrediction(address _player,int side) public payable{
         require(side==1 || side==0 || side==-1, "invalid side");
-        require(msg.sender != creator,"maker cant take");
+        require(_player != creator,"maker cant take");
         require(msg.value>0,"Need to include eth to take the bet");
-        require(players[msg.sender] != 0,"already anticipated");
-        players[msg.sender] = msg.value;
-        sides[side].push(msg.sender);
+        require(players[_player] == 0,"already anticipated");
+        players[_player] = msg.value;
+        sides[side].push(_player);
     }
 
-    function getInfo() public view returns (string,uint256,uint256,uint256,address,bool) {
+    function getInfo() public view returns (string ,uint256 ,uint256 ,uint256 ,address ,bool ) {
         return (coin,price,time,address(this).balance, oracle.provider,settle);
     }
 
@@ -82,6 +84,9 @@ contract PricePredict is  ReentrancyGuard {
 
     function setId(bytes32 _id) public {
         id = _id;
+    }
+    function getOracle() public view returns(address,bytes32){
+        return (oracle.provider,oracle.endpoint);
     }
 
     function getParticipants() public view  returns (address[], address[], address[]){
@@ -96,13 +101,17 @@ contract PricePredict is  ReentrancyGuard {
 
 
 
+    function canSettle() public view returns(bool){
+            return !settle && now>time;
+    }
+
+
     function refund(int256 side) private validSide(side) {
         address[] memory pars = sides[side];
         for(uint i=0; i<pars.length; i++){
             pars[i].transfer(players[pars[i]]);
         }
         return;
-
     }
 
     //Anyone can call settle and spend gas on executing this
@@ -113,7 +122,7 @@ contract PricePredict is  ReentrancyGuard {
      - Contract needs to have 1 dot bonded through delegateBond to settle, if not - > revert
      - call oracle to get data to settle, whoever call to query provider will have rewards as part of settlement
     */
-    function settlePrediction(address _bondage, address _dispatch) external  returns (uint256){
+    function settlePrediction(address _bondage, address _dispatch) external   returns (uint256){
         //this case is impossible to come across
         require(address(this).balance>0,"no eth balance in this contract, cant settle");
         require(!settle,"already settled");
@@ -143,8 +152,6 @@ contract PricePredict is  ReentrancyGuard {
                 return 0;
             }
             else{
-                uint256 bonded = ZapBridge(_bondage).getBoundDots(address(this),dataOracle, oracle.endpoint);
-                require(bonded>=1, "Need at least 1 dots bonded to settle");
                 bytes32[] memory params = new bytes32[](1);
                 params[0] = bytes32(time);
                 queryId = ZapBridge(_dispatch).query(oracle.provider,coin,oracle.endpoint,params);
@@ -192,6 +199,6 @@ contract PricePredict is  ReentrancyGuard {
             }
             require(address(this).balance==0,"not fully distributed");
         }
-        factory.emitSettled(address(this),resultPrice,totalAmountWinside,totalAmountLostside);
+        Factory.emitSettled(address(this),resultPrice,totalAmountWinside,totalAmountLostside);
     }
 }

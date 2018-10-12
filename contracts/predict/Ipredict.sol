@@ -1,9 +1,12 @@
-pragma solidity ^0.4.0;
+pragma solidity ^0.4.24;
 
 contract Ipredict {
-    function joinPrediction(uint256) internal;
-    function getInfo() public view;
-    function getParticipants() public view;
+    function joinPrediction(address,int256) public payable;
+    function getInfo() public view returns(string, uint, uint, uint, address, bool);
+    function getId() public view returns(bytes32);
+    function getOracle() public view returns(address,bytes32);
+    function canSettle() public view returns(bool);
+    function getParticipants() public view returns(address[],address[],address[]);
     function settlePrediction(address, address) internal returns (uint256);
     function callback( uint256, int[]) external;
     function distribute(uint8) private;
