@@ -67,7 +67,7 @@ contract("PredicFactory",async (accounts)=>{
     await this.currentTest.registry.initiateProviderCurve(endpoint, curve, 0, { from: oracleowner });
 
   })
-  it.only("1. Create new Predict Contract", async function(){
+  it("1. Create new Predict Contract", async function(){
       let created = await this.test.factory.createPredict(coin,price,time,1,oracleowner,endpoint,{from:accounts[1],value:10})
       expect(created).to.be.ok
       predict = created.logs[0].args.newPredict
@@ -101,8 +101,12 @@ contract("PredicFactory",async (accounts)=>{
     let balance = await this.test.token.balanceOf(broker)
     expect(balance.toNumber()).to.be.equal(10000000)
     await this.test.token.approve(this.test.bondage.address,1000,{from:broker})
+
   })
-  it("6. Settle Prediction", async function(){
+  it("6. Should have All settle-able conditions", async function(){
+
+  })
+  it("Should Settle the prediction by query provider, and Provider should receive the correct query", async ()=>{
     let queryId = await this.test.factory.settlePrediction(predict,{from:broker})
   })
   it("7. Oracle Response query ", async function(){

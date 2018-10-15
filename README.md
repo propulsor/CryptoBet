@@ -26,3 +26,23 @@ The winning/refund distribution is calculated as follow :
 3. If the winning result has players : 
 Winning distribution : 
 winAmount = stake + ((stake/totalWinSide)*totalLostSide)-settlerReward
+
+#DEVELOPMENT
+### Structure :
+- Database : Saving all the predictions information
+- Prediction Factory :
+    + Creating new prediction contracts and proxy all the contract calls. 
+    + Emit events for all contracts, Allowing anyone to listen and display information about all predictions
+- Prediction :  
+    + Created by calling Prediction Factory
+    + One time coin-price-time prediction per contract
+    + After settled, will be killed
+- ZapBridge : 
+    + Interface for interacting with Zap contracts
+    + Including : Bondage, Token, Dispatch, ZapCoordinator
+    
+### Setup and testing:
+- git clone
+- yarn
+- yarn test    
+     
