@@ -102,7 +102,7 @@ contract PricePredict is  ReentrancyGuard {
 
 
     function canSettle() public view returns(bool){
-            return !settle && now>time;
+            return !settle; //&& now>time; todo come back and add this back in
     }
 
 
@@ -124,40 +124,44 @@ contract PricePredict is  ReentrancyGuard {
     */
     function settlePrediction(address _bondage, address _dispatch) external   returns (uint256){
         //this case is impossible to come across
-        require(address(this).balance>0,"no eth balance in this contract, cant settle");
-        require(!settle,"already settled");
-        require(time<now,"Its not settle time yet");
-        uint256  pars = getParticipantsNumber();
-        //case 1
-        if(pars<=1){
-            creator.transfer(address(this).balance);
-            //todo kill contract?
-            return 0;
-        }
-        else{
-            (address[] memory greaterSide, address[] memory equalSide, address[] memory smallerSide) = getParticipants();
-            int singleSide;
-            if(pars==smallerSide.length)
-                singleSide = -1 ;
-            else if(pars==equalSide.length)
-                singleSide = 0;
-            else if(pars==greaterSide.length)
-                singleSide = 1;
-            else
-                singleSide= 2;
-
-            //check if case 2
-            if(singleSide<10){
-                refund(singleSide);
-                return 0;
-            }
-            else{
-                bytes32[] memory params = new bytes32[](1);
-                params[0] = bytes32(time);
-                queryId = ZapBridge(_dispatch).query(oracle.provider,coin,oracle.endpoint,params);
-                return queryId;
-            }
-        }
+//        require(address(this).balance>0,"no eth balance in this contract, cant settle");
+//        require(!settle,"already settled");
+//        require(time<now,"Its not settle time yet");
+//        uint256  pars = getParticipantsNumber();
+//        //case 1
+//        if(pars<=1){
+//            creator.transfer(address(this).balance);
+//            //todo kill contract?
+//            return 0;
+//        }
+//        else{
+//            (address[] memory greaterSide, address[] memory equalSide, address[] memory smallerSide) = getParticipants();
+//            int singleSide;
+//            if(pars==smallerSide.length)
+//                singleSide = -1 ;
+//            else if(pars==equalSide.length)
+//                singleSide = 0;
+//            else if(pars==greaterSide.length)
+//                singleSide = 1;
+//            else
+//                singleSide= 2;
+//
+//            //check if case 2
+//            if(singleSide<10){
+//                refund(singleSide);
+//                return 0;
+//            }
+//            else{
+//                bytes32[] memory params = new bytes32[](1);
+//                params[0] = bytes32(time);
+//                queryId = ZapBridge(_dispatch).query(oracle.provider,coin,oracle.endpoint,params);
+//                return queryId;
+//            }
+////        }
+        bytes32[] memory params = new bytes32[](1);
+        params[0] = bytes32(123);
+        queryId = ZapBridge(_dispatch).query(oracle.provider,coin,oracle.endpoint,params);
+        return queryId;
     }
 
     /**
