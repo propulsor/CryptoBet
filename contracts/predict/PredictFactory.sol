@@ -57,9 +57,6 @@ contract PredictFactory is ReentrancyGuard,Ownable{
     */
     function settlePrediction(address _predict) external nonReentrant returns(uint256){
         require(Ipredict(_predict).canSettle(),"this predict cant be settled at the moment");
-        (address provider,bytes32 endpoint) = Ipredict(_predict).getOracle();
-        uint bonded = ZapBridge(bondage).delegateBond(msg.sender,provider,endpoint,1);
-        require(bonded>=1, "Need at least 1 dots bonded to settle");
         uint256 queryId = PricePredict(_predict).settlePrediction(bondage,dispatch);
         emit SettlingPrediction(_predict,queryId);
         return queryId;
@@ -69,6 +66,9 @@ contract PredictFactory is ReentrancyGuard,Ownable{
         return Ipredict(_predict).getInfo();
     }
 
+    function getZapBridge() public view returns (address, address){
+        return (dispatch,bondage);
+    }
     function getOracle(address _predict) public view returns (address,bytes32){
         return Ipredict(_predict).getOracle();
     }

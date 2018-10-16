@@ -64,7 +64,7 @@ contract("PredicFactory",async (accounts)=>{
 
     /*** Create Zap Oracle ***/
     await this.currentTest.registry.initiateProvider(pubkey, title, { from: oracleowner });
-    await this.currentTest.registry.initiateProviderCurve(endpoint, curve, 0, { from: oracleowner });
+    await this.currentTest.registry.initiateProviderCurve(endpoint, curve, broker, { from: oracleowner });
 
   })
   it("1. Create new Predict Contract", async function(){
@@ -75,6 +75,8 @@ contract("PredicFactory",async (accounts)=>{
     console.log("predict", predict)
     let createdPredict = await this.test.factory.getPredictInfo(predict)
     console.log("PREDICT JUST CREATED ",createdPredict)
+      let d = await this.test.factory.getZapBridge();
+      console.log("DISPATCH :", d, this.test.dispatch.address)
     let oracleInfo = await this.test.factory.getOracle(predict);
       console.log("ORACLE info : ", oracleInfo)
   })
@@ -97,17 +99,20 @@ contract("PredicFactory",async (accounts)=>{
   })
   it("5. Setup condition for settling prediction",async function(){
     //get zap token
+      const DOTS = 10
     await this.test.token.allocate(broker,10000000,{from:owner})
     let balance = await this.test.token.balanceOf(broker)
     expect(balance.toNumber()).to.be.equal(10000000)
-    await this.test.token.approve(this.test.bondage.address,1000,{from:broker})
-
+    await this.test.token.approve(this.test.bondage.address,1000,{from:broker});
+    //delegate bond
+      await this.test.bondage.delegateBond(predict,oracleowner,endpoint,DOTS,{from:broker})
+      let bonded = await this.test.bondage.getBoundDots(predict,oracleowner,endpoint);
+      console.log("bonded dots of predict contract", bonded.toNumber())
+      expect(bonded.toNumber()).to.be.equal(DOTS);
   })
-  it("6. Should have All settle-able conditions", async function(){
-
-  })
-  it("Should Settle the prediction by query provider, and Provider should receive the correct query", async ()=>{
-    let queryId = await this.test.factory.settlePrediction(predict,{from:broker})
+  it("6. Settle Prediction", async function(){
+    let queryId = await this.test.factory.settlePrediction(predict)
+      console.log("queryId : ", queryId.logs[0].args.queryId.toString())
   })
   it("7. Oracle Response query ", async function(){
 
