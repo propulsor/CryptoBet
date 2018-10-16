@@ -119,24 +119,23 @@ contract Dispatch is Destructible, DispatchInterface, Upgradable {
         returns (uint256 id)
     {
         uint256 dots = bondage.getBoundDots(msg.sender, provider, endpoint);
-//        bool onchainProvider = isContract(provider);
-//        bool onchainSubscriber = isContract(msg.sender);
-//        if(dots >= 1) {
-//            //enough dots
-//            bondage.escrowDots(msg.sender, provider, endpoint, 1);
-//
-//            id = uint256(keccak256(abi.encodePacked(block.number, now, userQuery, msg.sender, provider)));
-//
-//            createQuery(id, provider, msg.sender, endpoint, userQuery, onchainSubscriber);
-//            if(onchainProvider) {
-//                OnChainProvider(provider).receive(id, userQuery, endpoint, endpointParams, onchainSubscriber);
-//            } else{
-//                emit Incoming(id, provider, msg.sender, userQuery, endpoint, endpointParams, onchainSubscriber);
-//            }
-//        } else { // NOT ENOUGH DOTS
-//            revert("Subscriber does not have any dots.");
-//        }
-        return dots;
+        bool onchainProvider = isContract(provider);
+        bool onchainSubscriber = isContract(msg.sender);
+        if(dots >= 1) {
+            //enough dots
+            bondage.escrowDots(msg.sender, provider, endpoint, 1);
+
+            id = uint256(keccak256(abi.encodePacked(block.number, now, userQuery, msg.sender, provider)));
+
+            createQuery(id, provider, msg.sender, endpoint, userQuery, onchainSubscriber);
+            if(onchainProvider) {
+                OnChainProvider(provider).receive(id, userQuery, endpoint, endpointParams, onchainSubscriber);
+            } else{
+                emit Incoming(id, provider, msg.sender, userQuery, endpoint, endpointParams, onchainSubscriber);
+            }
+        } else { // NOT ENOUGH DOTS
+            revert("Subscriber does not have any dots.");
+        }
     }
 
     /// @notice Transfer dots from Bondage escrow to data provider's Holder object under its own address

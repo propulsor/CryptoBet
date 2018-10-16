@@ -23,7 +23,8 @@ contract PredictFactory is ReentrancyGuard,Ownable{
     event JoinPredict(address indexed player, int256 indexed side, uint256 indexed amount);
     event SettlingPrediction(address indexed predict, uint256 indexed queryId);
     event PredictCreated(bytes32 indexed id, uint256 indexed price, uint256 indexed ti, string coin,address newPredict);
-    event Settled(bytes32 indexed id, uint256 indexed resultPrice, uint256 winAmount, uint256 lostAmount);
+    event Settled(address[] winners, address predict, uint256 resultPrice, uint256 winAmount, uint256 lostAmount);
+    event Callback(uint256 id, uint256 response, address sender);
 
     constructor(address _dbAddress, address _zapCoor) public{
         require(_dbAddress != address(0),"db address is required");
@@ -89,9 +90,15 @@ contract PredictFactory is ReentrancyGuard,Ownable{
     function getParticipants(address _predict) public view returns (address[],address[],address[]){
         return Ipredict(_predict).getParticipants();
     }
-
-    function emitSettled(bytes32 _id, uint256 _price, uint256 _winAmount, uint256 _lostAmount) external {
-        emit Settled(_id,_price, _winAmount, _lostAmount);
+    function getSide(address _predict,int _side) public view returns(address[]){
+        return  Ipredict(_predict).getSide(_side);
     }
 
+    function emitSettled(address[] winner,address predict, uint256 _price, uint256 _winAmount, uint256 _lostAmount) external {
+        emit Settled(winner,predict,_price, _winAmount, _lostAmount);
+    }
+
+    function emitCallback(uint256 id, uint256 response,address sender){
+        emit Callback(id,response,sender);
+    }
 }

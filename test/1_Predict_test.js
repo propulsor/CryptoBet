@@ -33,6 +33,7 @@ contract("PredicFactory",async (accounts)=>{
   const oracleowner = accounts[1]
   let predict;
   let broker = accounts[8]
+  let queryId;
   beforeEach(async function deployContract(){
     /***Deploy zap contrracts ***/
     this.currentTest.zapdb = await ZapDB.new();
@@ -86,6 +87,8 @@ contract("PredicFactory",async (accounts)=>{
     await this.test.factory.joinPrediction(predict,-1,{from:accounts[5],value:30});
     let players = await this.test.factory.getParticipants(predict);
     console.log("Players ", players)
+    let playersSide = await this.test.factory.getSide(predict,1);
+    console.log("player on greater side : ", playersSide)
 
   })
   it("3. Validate info", async function(){
@@ -109,13 +112,17 @@ contract("PredicFactory",async (accounts)=>{
       let bonded = await this.test.bondage.getBoundDots(predict,oracleowner,endpoint);
       console.log("bonded dots of predict contract", bonded.toNumber())
       expect(bonded.toNumber()).to.be.equal(DOTS);
-  })
-  it("6. Settle Prediction", async function(){
-    let queryId = await this.test.factory.settlePrediction(predict)
-      console.log("queryId : ", queryId.logs[0].args.queryId.toString())
-  })
-  it("7. Oracle Response query ", async function(){
 
+      //query to settle prediction
+    let res = await this.test.factory.settlePrediction(predict)
+    queryId = res.logs[0].args.queryId
+      console.log("queryId : ", queryId)
+  //})
+  //it("7. Oracle Response query ", async function(){
+    console.log("provider : ", await this.test.dispatch.getProvider(queryId))
+    let res1 = await this.test.dispatch.respondIntArray(queryId.toString(),[8000],{from:oracleowner})
+    console.log("response " ,res1.logs[0].args)
+    // expect(true).to.equal(false)
   })
   it("8. Prediction should be settled", async function(){
 

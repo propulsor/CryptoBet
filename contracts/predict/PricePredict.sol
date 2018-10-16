@@ -99,7 +99,9 @@ contract PricePredict is  ReentrancyGuard {
         return size;
     }
 
-
+    function getSide(int _side) public view returns(address[]){
+        return sides[_side];
+    }
 
     function canSettle() public view returns(bool){
             return !settle; //&& now>time; todo come back and add this back in
@@ -124,44 +126,40 @@ contract PricePredict is  ReentrancyGuard {
     */
     function settlePrediction(address _bondage, address _dispatch) external   returns (uint256){
         //this case is impossible to come across
-//        require(address(this).balance>0,"no eth balance in this contract, cant settle");
-//        require(!settle,"already settled");
-//        require(time<now,"Its not settle time yet");
-//        uint256  pars = getParticipantsNumber();
-//        //case 1
-//        if(pars<=1){
-//            creator.transfer(address(this).balance);
-//            //todo kill contract?
-//            return 0;
-//        }
-//        else{
-//            (address[] memory greaterSide, address[] memory equalSide, address[] memory smallerSide) = getParticipants();
-//            int singleSide;
-//            if(pars==smallerSide.length)
-//                singleSide = -1 ;
-//            else if(pars==equalSide.length)
-//                singleSide = 0;
-//            else if(pars==greaterSide.length)
-//                singleSide = 1;
-//            else
-//                singleSide= 2;
-//
-//            //check if case 2
-//            if(singleSide<10){
-//                refund(singleSide);
-//                return 0;
-//            }
-//            else{
-//                bytes32[] memory params = new bytes32[](1);
-//                params[0] = bytes32(time);
-//                queryId = ZapBridge(_dispatch).query(oracle.provider,coin,oracle.endpoint,params);
-//                return queryId;
-//            }
-////        }
-        bytes32[] memory params = new bytes32[](1);
-        params[0] = bytes32(123);
-        queryId = ZapBridge(_dispatch).query(oracle.provider,coin,oracle.endpoint,params);
-        return queryId;
+        require(address(this).balance>0,"no eth balance in this contract, cant settle");
+        require(!settle,"already settled");
+        //require(time<now,"Its not settle time yet");
+        uint256  pars = getParticipantsNumber();
+        //case 1
+        if(pars<=1){
+            creator.transfer(address(this).balance);
+            //todo kill contract?
+            return 0;
+        }
+        else{
+            (address[] memory greaterSide, address[] memory equalSide, address[] memory smallerSide) = getParticipants();
+            int singleSide;
+            if(pars==smallerSide.length)
+                singleSide = -1 ;
+            else if(pars==equalSide.length)
+                singleSide = 0;
+            else if(pars==greaterSide.length)
+                singleSide = 1;
+            else
+                singleSide= 10;
+
+            //check if case 2
+            if(singleSide<10){
+                refund(singleSide);
+                return 0;
+            }
+            else{
+                bytes32[] memory params = new bytes32[](1);
+                params[0] = bytes32(time);
+                queryId = ZapBridge(_dispatch).query(oracle.provider,coin,oracle.endpoint,params);
+                return queryId;
+            }
+        }
     }
 
     /**
@@ -169,40 +167,42 @@ contract PricePredict is  ReentrancyGuard {
     - response is expected to be single number of price
     - count player on each side and calculate distribution of winners
     */
-    function callback(uint256 _id, int[] _response) external nonReentrant{
-        require(msg.sender==oracle.provider, "result is not from correct oracle");
+    function callback(uint256 _id, int[] _response) external nonReentrant {
         require(_id == queryId,"not matching id queried");
-        require(_response.length > 0, "no response detected");
+        require(_response.length>0, "no response detected");
         resultPrice = uint256(_response[0]);
-        require(resultPrice>0,"price cant be 0");
-        if(resultPrice>price){
+        Factory.emitCallback(_id,resultPrice,msg.sender);
+    require(resultPrice>0,"price cant be 0");
+//        if(resultPrice>price){
             distribute(greater);
-        }
-        else if(resultPrice<price){
-            distribute(smaller);
-        }
-        else{
-            distribute(equal);
-        }
+//        }
+//        else if(resultPrice<price){
+//            distribute(smaller);
+//        }
+//        else{
+        //    distribute(equal);
+//        }
     }
 
-    function distribute(int _side) private nonReentrant{
+    function distribute(int _side) internal nonReentrant{
         address[] memory winners = sides[_side];
-        uint256 totalAmountWinside = 0;
-        for(uint i=0; i<winners.length; i++){
-            totalAmountWinside += players[winners[i]];
-        }
-        uint256 totalAmountLostside = address(this).balance - totalAmountWinside;
-        if(totalAmountLostside<=0){
-            //this should never happen
-        }else{
-            for(uint j=0; j<winners.length; j++){
-                address winner = winners[j];
-                uint256 winAmount = players[winner].add(players[winner].div(totalAmountWinside).mul(totalAmountLostside));
-                require(winner.send(winAmount),"fail to send to this winner, possible code attempted to execute");
-            }
-            require(address(this).balance==0,"not fully distributed");
-        }
-        Factory.emitSettled(address(this),resultPrice,totalAmountWinside,totalAmountLostside);
+//        uint256 totalAmountWinside = 0;
+//        for(uint i=0; i<winners.length; i++){
+//            totalAmountWinside += players[winners[i]];
+//        }
+//        uint256 totalAmountLostside = address(this).balance - totalAmountWinside;
+//        if(totalAmountLostside<=0){
+//            //this should never happen
+//            revert();
+//        }else{
+//            for(uint j=0; j<winners.length; j++){
+//                address winner = winners[j];
+//                uint256 winAmount = players[winner].add(players[winner].div(totalAmountWinside).mul(totalAmountLostside));
+//                require(winner.send(winAmount),"fail to send to this winner, possible code attempted to execute");
+//            }
+////            require(address(this).balance==0,"not fully distributed");
+//        }
+        //Factory.emitSettled(address[],address(this),resultPrice,totalAmountWinside,totalAmountLostside);
+       // Factory.emitSettled(winners,address(this),resultPrice,0,0);
     }
 }
