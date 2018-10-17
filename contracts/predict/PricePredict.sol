@@ -167,42 +167,42 @@ contract PricePredict is  ReentrancyGuard {
     - response is expected to be single number of price
     - count player on each side and calculate distribution of winners
     */
-    function callback(uint256 _id, int[] _response) external nonReentrant {
+    function callback(uint256 _id, int[] _response) public nonReentrant {
         require(_id == queryId,"not matching id queried");
         require(_response.length>0, "no response detected");
         resultPrice = uint256(_response[0]);
+        require(resultPrice>0,"price cant be 0");
         Factory.emitCallback(_id,resultPrice,msg.sender);
-    require(resultPrice>0,"price cant be 0");
-//        if(resultPrice>price){
+        if(resultPrice>price){
             distribute(greater);
-//        }
-//        else if(resultPrice<price){
-//            distribute(smaller);
-//        }
-//        else{
-        //    distribute(equal);
-//        }
+        }
+        else if(resultPrice<price){
+            distribute(smaller);
+        }
+        else{
+            distribute(equal);
+        }
     }
 
-    function distribute(int _side) internal nonReentrant{
+    function distribute(int _side) internal {
         address[] memory winners = sides[_side];
-//        uint256 totalAmountWinside = 0;
-//        for(uint i=0; i<winners.length; i++){
-//            totalAmountWinside += players[winners[i]];
-//        }
-//        uint256 totalAmountLostside = address(this).balance - totalAmountWinside;
+        uint256 totalAmountWinside = 0;
+        uint256 testWinAmount;
+        for(uint i=0; i<winners.length; i++){
+            totalAmountWinside = totalAmountWinside.add(players[winners[i]]);
+        }
+        uint256 totalAmountLostside = address(this).balance - totalAmountWinside;
 //        if(totalAmountLostside<=0){
 //            //this should never happen
 //            revert();
 //        }else{
-//            for(uint j=0; j<winners.length; j++){
-//                address winner = winners[j];
-//                uint256 winAmount = players[winner].add(players[winner].div(totalAmountWinside).mul(totalAmountLostside));
-//                require(winner.send(winAmount),"fail to send to this winner, possible code attempted to execute");
-//            }
-////            require(address(this).balance==0,"not fully distributed");
-//        }
-        //Factory.emitSettled(address[],address(this),resultPrice,totalAmountWinside,totalAmountLostside);
-       // Factory.emitSettled(winners,address(this),resultPrice,0,0);
+            for(uint j=0; j<winners.length; j++){
+                address winner = winners[j];
+                uint256 winAmount = players[winner].add(totalAmountLostside.div(totalAmountWinside.div(players[winner])));
+                winner.transfer(winAmount);
+            }
+       //     require(address(this).balance==0,"not fully distributed");
+     //   }
+        Factory.emitSettled(winners,address(this),resultPrice,totalAmountWinside,totalAmountLostside);
     }
 }

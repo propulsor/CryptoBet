@@ -34,6 +34,7 @@ contract("PredicFactory",async (accounts)=>{
   let predict;
   let broker = accounts[8]
   let queryId;
+  let balances = {}
   beforeEach(async function deployContract(){
     /***Deploy zap contrracts ***/
     this.currentTest.zapdb = await ZapDB.new();
@@ -69,7 +70,7 @@ contract("PredicFactory",async (accounts)=>{
 
   })
   it("1. Create new Predict Contract", async function(){
-      let created = await this.test.factory.createPredict(coin,price,time,1,oracleowner,endpoint,{from:accounts[1],value:10})
+      let created = await this.test.factory.createPredict(coin,price,time,1,oracleowner,endpoint,{from:accounts[1],value:web3.toWei(10,'ether')})
       expect(created).to.be.ok
       predict = created.logs[0].args.newPredict
     expect(predict).to.be.ok
@@ -80,11 +81,16 @@ contract("PredicFactory",async (accounts)=>{
       console.log("DISPATCH :", d, this.test.dispatch.address)
     let oracleInfo = await this.test.factory.getOracle(predict);
       console.log("ORACLE info : ", oracleInfo)
+
+    for(let account of accounts){
+      balances[account] = web3.fromWei((await web3.eth.getBalance(account)),"ether").toNumber();
+    }
+    console.log("BALANCES BEFORE : ",balances)
   })
   it("2. Join Prediction on greater side",async function(){
-    await this.test.factory.joinPrediction(predict, 1,{from:accounts[3],value:10});
-    await this.test.factory.joinPrediction(predict,0,{from:accounts[4],value:20});
-    await this.test.factory.joinPrediction(predict,-1,{from:accounts[5],value:30});
+    await this.test.factory.joinPrediction(predict, 1,{from:accounts[3],value:web3.toWei(10,'ether')});
+    await this.test.factory.joinPrediction(predict,0,{from:accounts[4],value:web3.toWei(20,'ether')});
+    await this.test.factory.joinPrediction(predict,-1,{from:accounts[5],value:web3.toWei(30,'ether')});
     let players = await this.test.factory.getParticipants(predict);
     console.log("Players ", players)
     let playersSide = await this.test.factory.getSide(predict,1);
@@ -92,7 +98,6 @@ contract("PredicFactory",async (accounts)=>{
 
   })
   it("3. Validate info", async function(){
-
   })
   it("4. Same player should not be able to join twice", async function(){
     await expect(this.test.factory.joinPrediction(predict,1,{from:accounts[4],value:10})).to
@@ -122,9 +127,16 @@ contract("PredicFactory",async (accounts)=>{
     console.log("provider : ", await this.test.dispatch.getProvider(queryId))
     let res1 = await this.test.dispatch.respondIntArray(queryId.toString(),[8000],{from:oracleowner})
     console.log("response " ,res1.logs[0].args)
-    // expect(true).to.equal(false)
+  //})
+//  it("8. Prediction should be settled", async function(){
+    let diff = {}
+    for(let account of accounts){
+      diff[account] = web3.fromWei(await web3.eth.getBalance(account)).toNumber() - balances[account];
+    }
+    let predictBalance = await web3.eth.getBalance(predict)
+    expect(predictBalance.toNumber()).to.equal(0)
   })
-  it("8. Prediction should be settled", async function(){
+  it("Balance of winers should reflect the gainzzzzz", async ()=>{
 
   })
 })
