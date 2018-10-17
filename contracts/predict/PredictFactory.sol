@@ -36,7 +36,7 @@ contract PredictFactory is ReentrancyGuard,Ownable{
     }
 
     function createPredict(string memory _coin, uint256 _price, uint256 _time, int256 _side, address _oracle, bytes32 _endpoint)  payable nonReentrant returns(address){
-        address newPredict = (new PricePredict).value(msg.value)(msg.sender,_coin,_price,_time,_side, _oracle, _endpoint);
+        address newPredict = (new PricePredict).value(msg.value)(msg.sender,_coin,_price,_time,_side, _oracle, _endpoint,bondage,dispatch);
         bytes32 id = keccak256(abi.encodePacked(msg.sender,newPredict,_coin,_price,_time));
         PricePredict(newPredict).setId(id);
         db.setAddress(id,newPredict);
@@ -58,7 +58,7 @@ contract PredictFactory is ReentrancyGuard,Ownable{
     */
     function settlePrediction(address _predict) external nonReentrant returns(uint256){
         require(Ipredict(_predict).canSettle(),"this predict cant be settled at the moment");
-        uint256 queryId = PricePredict(_predict).settlePrediction(bondage,dispatch);
+        uint256 queryId = PricePredict(_predict).settlePrediction();
         emit SettlingPrediction(_predict,queryId);
         return queryId;
     }

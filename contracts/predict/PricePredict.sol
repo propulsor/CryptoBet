@@ -11,12 +11,6 @@ Simple Price prediction
 contract PricePredict is  ReentrancyGuard {
     using SafeMath for uint256;
 
-    address private bondage;
-    address private zapToken;
-    address private dispatch;
-    address private coordinator;
-    address public dataOracle;
-    uint256 public minimumBetAmount;
     bytes32 public id;
 
     int greater = 1;
@@ -45,13 +39,15 @@ contract PricePredict is  ReentrancyGuard {
     uint256 queryId;
     address settler;
     address factory;
+    address bondage;
+    address dispatch;
     Oracle oracle;
     IpredictFactory Factory;
 
 
 
 
-    constructor(address _creator,string _coin, uint256 _price, uint256 _time, int _side, address _oracle, bytes32 _endpoint) public payable {
+    constructor(address _creator,string _coin, uint256 _price, uint256 _time, int _side, address _oracle, bytes32 _endpoint, address _bondage, address _dispatch) public payable {
         require(msg.value>0,"Need to send eth to bet to create");
         require(_side==1 || _side == 0 || _side == -1,"invalid side");
         require(_time>0,"time has to be in the future");
@@ -62,6 +58,8 @@ contract PricePredict is  ReentrancyGuard {
         oracle = Oracle(_oracle,_endpoint);
         sides[_side].push(creator);
         players[creator] = msg.value;
+        bondage = _bondage;
+        dispatch = _dispatch;
         Factory = IpredictFactory(msg.sender);
     }
 
@@ -124,11 +122,10 @@ contract PricePredict is  ReentrancyGuard {
      - Contract needs to have 1 dot bonded through delegateBond to settle, if not - > revert
      - call oracle to get data to settle, whoever call to query provider will have rewards as part of settlement
     */
-    function settlePrediction(address _bondage, address _dispatch) external   returns (uint256){
-        //this case is impossible to come across
+    function settlePrediction() external   returns (uint256){
         require(address(this).balance>0,"no eth balance in this contract, cant settle");
         require(!settle,"already settled");
-        //require(time<now,"Its not settle time yet");
+        //require(time<now,"Its not settle time yet"); TODO test time
         uint256  pars = getParticipantsNumber();
         //case 1
         if(pars<=1){
@@ -156,7 +153,7 @@ contract PricePredict is  ReentrancyGuard {
             else{
                 bytes32[] memory params = new bytes32[](1);
                 params[0] = bytes32(time);
-                queryId = ZapBridge(_dispatch).query(oracle.provider,coin,oracle.endpoint,params);
+                queryId = ZapBridge(dispatch).query(oracle.provider,coin,oracle.endpoint,params);
                 return queryId;
             }
         }
@@ -168,6 +165,7 @@ contract PricePredict is  ReentrancyGuard {
     - count player on each side and calculate distribution of winners
     */
     function callback(uint256 _id, int[] _response) public nonReentrant {
+        require(msg.sender == dispatch, "unauthorized response");
         require(_id == queryId,"not matching id queried");
         require(_response.length>0, "no response detected");
         resultPrice = uint256(_response[0]);

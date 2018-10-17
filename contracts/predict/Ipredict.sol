@@ -8,7 +8,7 @@ contract Ipredict {
     function canSettle() public view returns(bool);
     function getParticipants() public view returns(address[],address[],address[]);
     function getSide(int _side) public view returns (address[]);
-    function settlePrediction(address, address) internal returns (uint256);
+    function settlePrediction() public returns (uint256);
     function callback( uint256, int[]) external;
     function distribute(uint8) private;
 }
