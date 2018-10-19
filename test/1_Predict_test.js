@@ -35,51 +35,52 @@ contract("PredicFactory",async (accounts)=>{
   let broker = accounts[8]
   let queryId;
   let balances = {}
-  beforeEach(async function deployContract(){
+  let zapdb,zapcoor,token,registry,cost,bondage,dispatch,db,factory
+  before(async function deployContract(){
     /***Deploy zap contrracts ***/
-    this.currentTest.zapdb = await ZapDB.new();
-    this.currentTest.zapcoor = await ZapCoor.new();
-    await this.currentTest.zapdb.transferOwnership(this.currentTest.zapcoor.address);
-    await this.currentTest.zapcoor.addImmutableContract('DATABASE', this.currentTest.zapdb.address);
+    zapdb = await ZapDB.new();
+    zapcoor = await ZapCoor.new();
+    await zapdb.transferOwnership(zapcoor.address);
+    await zapcoor.addImmutableContract('DATABASE', zapdb.address);
 
-    this.currentTest.token = await ZapToken.new();
-    await this.currentTest.zapcoor.addImmutableContract('ZAP_TOKEN', this.currentTest.token.address);
+    token = await ZapToken.new();
+    await zapcoor.addImmutableContract('ZAP_TOKEN', token.address);
 
-    this.currentTest.registry = await Registry.new(this.currentTest.zapcoor.address);
-    await this.currentTest.zapcoor.updateContract('REGISTRY', this.currentTest.registry.address);
+    registry = await Registry.new(zapcoor.address);
+    await zapcoor.updateContract('REGISTRY', registry.address);
 
-    this.currentTest.cost = await Cost.new(this.currentTest.zapcoor.address);
-    await this.currentTest.zapcoor.updateContract('CURRENT_COST', this.currentTest.cost.address);
+    cost = await Cost.new(zapcoor.address);
+    await zapcoor.updateContract('CURRENT_COST', cost.address);
 
-    this.currentTest.bondage = await Bondage.new(this.currentTest.zapcoor.address);
-    await this.currentTest.zapcoor.updateContract('BONDAGE', this.currentTest.bondage.address);
+    bondage = await Bondage.new(zapcoor.address);
+    await zapcoor.updateContract('BONDAGE', bondage.address);
 
-    this.currentTest.dispatch = await Dispatch.new(this.currentTest.zapcoor.address);
-    await this.currentTest.zapcoor.updateContract('DISPATCH', this.currentTest.dispatch.address);
+    dispatch = await Dispatch.new(zapcoor.address);
+    await zapcoor.updateContract('DISPATCH', dispatch.address);
 
-     await this.currentTest.zapcoor.updateAllDependencies();
+    await zapcoor.updateAllDependencies();
 
     /*** Deploy Predict related contracts ***/
-    this.currentTest.db = await Db.new();
-    this.currentTest.factory = await PredictFactory.new(this.currentTest.db.address,this.currentTest.zapcoor.address);
-    this.currentTest.db.setStorageContract(this.currentTest.factory.address,true)
+    db = await Db.new();
+    factory = await PredictFactory.new(db.address,zapcoor.address);
+    db.setStorageContract(factory.address,true)
 
     /*** Create Zap Oracle ***/
-    await this.currentTest.registry.initiateProvider(pubkey, title, { from: oracleowner });
-    await this.currentTest.registry.initiateProviderCurve(endpoint, curve, broker, { from: oracleowner });
+    await registry.initiateProvider(pubkey, title, { from: oracleowner });
+    await registry.initiateProviderCurve(endpoint, curve, broker, { from: oracleowner });
 
   })
   it("1. Create new Predict Contract", async function(){
-      let created = await this.test.factory.createPredict(coin,price,time,1,oracleowner,endpoint,{from:accounts[1],value:web3.toWei(10,'ether')})
+      let created = await factory.createPredict(coin,price,time,1,oracleowner,endpoint,{from:accounts[1],value:web3.toWei(10,'ether')})
       expect(created).to.be.ok
       predict = created.logs[0].args.newPredict
     expect(predict).to.be.ok
     console.log("predict", predict)
-    let createdPredict = await this.test.factory.getPredictInfo(predict)
+    let createdPredict = await factory.getPredictInfo(predict)
     console.log("PREDICT JUST CREATED ",createdPredict)
-      let d = await this.test.factory.getZapBridge();
-      console.log("DISPATCH :", d, this.test.dispatch.address)
-    let oracleInfo = await this.test.factory.getOracle(predict);
+      let d = await factory.getZapBridge();
+      console.log("DISPATCH :", d, dispatch.address)
+    let oracleInfo = await factory.getOracle(predict);
       console.log("ORACLE info : ", oracleInfo)
 
     for(let account of accounts){
@@ -88,47 +89,47 @@ contract("PredicFactory",async (accounts)=>{
     console.log("BALANCES BEFORE : ",balances)
   })
   it("2. Join Prediction on greater side",async function(){
-    await this.test.factory.joinPrediction(predict, 1,{from:accounts[3],value:web3.toWei(10,'ether')});
-    await this.test.factory.joinPrediction(predict,0,{from:accounts[4],value:web3.toWei(20,'ether')});
-    await this.test.factory.joinPrediction(predict,-1,{from:accounts[5],value:web3.toWei(30,'ether')});
-    let players = await this.test.factory.getParticipants(predict);
+    await factory.joinPrediction(predict, 1,{from:accounts[3],value:web3.toWei(10,'ether')});
+    await factory.joinPrediction(predict,0,{from:accounts[4],value:web3.toWei(20,'ether')});
+    await factory.joinPrediction(predict,-1,{from:accounts[5],value:web3.toWei(30,'ether')});
+    let players = await factory.getParticipants(predict);
     console.log("Players ", players)
-    let playersSide = await this.test.factory.getSide(predict,1);
+    let playersSide = await factory.getSide(predict,1);
     console.log("player on greater side : ", playersSide)
 
   })
   it("3. Validate info", async function(){
   })
   it("4. Same player should not be able to join twice", async function(){
-    await expect(this.test.factory.joinPrediction(predict,1,{from:accounts[4],value:10})).to
+    await expect(factory.joinPrediction(predict,1,{from:accounts[4],value:10})).to
       .eventually.be.rejectedWith(REVERT)
-    await expect(this.test.factory.joinPrediction(predict,-1,{from:accounts[4],value:10})).to
+    await expect(factory.joinPrediction(predict,-1,{from:accounts[4],value:10})).to
       .eventually.be.rejectedWith(REVERT)
   })
   it("5. Setup condition for settling prediction",async function(){
     //get zap token
       const DOTS = 10
-    await this.test.token.allocate(broker,10000000,{from:owner})
-    let balance = await this.test.token.balanceOf(broker)
+    await token.allocate(broker,10000000,{from:owner})
+    let balance = await token.balanceOf(broker)
     expect(balance.toNumber()).to.be.equal(10000000)
-    await this.test.token.approve(this.test.bondage.address,1000,{from:broker});
+    await token.approve(bondage.address,1000,{from:broker});
     //delegate bond
-      await this.test.bondage.delegateBond(predict,oracleowner,endpoint,DOTS,{from:broker})
-      let bonded = await this.test.bondage.getBoundDots(predict,oracleowner,endpoint);
+      await bondage.delegateBond(predict,oracleowner,endpoint,DOTS,{from:broker})
+      let bonded = await bondage.getBoundDots(predict,oracleowner,endpoint);
       console.log("bonded dots of predict contract", bonded.toNumber())
       expect(bonded.toNumber()).to.be.equal(DOTS);
-
+    console.log("PREDICT info : ", await factory.getPredictInfo(predict))
       //query to settle prediction
-    let res = await this.test.factory.settlePrediction(predict)
+    let res = await factory.settlePrediction(predict)
     queryId = res.logs[0].args.queryId
-      console.log("queryId : ", queryId)
-  //})
-  //it("7. Oracle Response query ", async function(){
-    console.log("provider : ", await this.test.dispatch.getProvider(queryId))
-    let res1 = await this.test.dispatch.respondIntArray(queryId.toString(),[8000],{from:oracleowner})
+      // console.log("queryId : ", queryId)
+  })
+  it("7. Oracle Response query ", async function(){
+    console.log("provider : ", await dispatch.getProvider(queryId))
+    let res1 = await dispatch.respondIntArray(queryId.toString(),[8000],{from:oracleowner})
     console.log("response " ,res1.logs[0].args)
-  //})
-//  it("8. Prediction should be settled", async function(){
+  })
+  it("8. Prediction should be settled", async function(){
     let diff = {}
     for(let account of accounts){
       diff[account] = web3.fromWei(await web3.eth.getBalance(account)).toNumber() - balances[account];

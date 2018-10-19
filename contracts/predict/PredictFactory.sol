@@ -58,7 +58,7 @@ contract PredictFactory is ReentrancyGuard,Ownable{
     */
     function settlePrediction(address _predict) external nonReentrant returns(uint256){
         require(Ipredict(_predict).canSettle(),"this predict cant be settled at the moment");
-        uint256 queryId = PricePredict(_predict).settlePrediction();
+        uint256 queryId = Ipredict(_predict).settlePrediction();
         emit SettlingPrediction(_predict,queryId);
         return queryId;
     }
